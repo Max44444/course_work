@@ -3,4 +3,4 @@ project(course_work)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(course_work main.cpp)
+add_executable(course_work main.cpp people/Human.h people/User.cpp people/User.h magazine.cpp magazine.h)
