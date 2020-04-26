@@ -9,14 +9,13 @@
 
 class User : public Human {
 public:
-    User(std::string f_name, std::string l_name);
+    User(const std::string &f_name, const std::string &l_name);
     ~User();
 
     std::string get_first_name() override;
     std::string get_last_name() override;
 
     static std::size_t get_quantity();
-
 private:
     static std::size_t quantity;
 };

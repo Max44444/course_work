@@ -5,14 +5,14 @@
 #ifndef COURSE_WORK_MAGAZINE_H
 #define COURSE_WORK_MAGAZINE_H
 
+#include "stdafx.h"
 
-namespace football_club {
-
-    class magazine {
-
-    };
-
-}
+class Magazine {
+public:
+    Magazine() = default;
+    Magazine(const Magazine&) = default;
+private:
+};
 
 
 #endif //COURSE_WORK_MAGAZINE_H

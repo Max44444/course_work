@@ -1,7 +1,8 @@
 #include <iostream>
 #include "people/User.h"
 
+using namespace std;
+
 int main() {
-    User u("", "ewfsdfg3asdfr");
     return 0;
 }
