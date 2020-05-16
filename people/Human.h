@@ -9,21 +9,30 @@
 
 class Human {
 public:
-    Human(const std::string& f_name, const std::string& l_name){
-        if(f_name.empty() || l_name.empty()) {
+    explicit Human(const std::string& f_name){
+        if(f_name.empty()) {
             std::string msg = __PRETTY_FUNCTION__;
-            throw std::invalid_argument("First or last name in " + msg + " are empty\n");
+            throw std::invalid_argument("Name in " + msg + " is empty\n");
         }
-        _first_name = f_name;
-        _last_name = l_name;
+        _name = f_name;
     }
 
-    virtual std::string get_first_name() = 0;
-    virtual std::string get_last_name() = 0;
+    bool operator ==(const Human &other) const{
+        return _is_equals(other);
+    }
+
+    bool operator !=(const Human &other) const{
+        return !_is_equals(other);
+    }
+
+    [[nodiscard]] virtual std::string get_name() const {
+        return _name;
+    }
 
 protected:
-    std::string _first_name;
-    std::string _last_name;
+    std::string _name;
+
+    virtual bool _is_equals(const Human &other) const = 0;
 };
 
 
