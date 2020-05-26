@@ -3,7 +3,7 @@ project(course_work)
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(course_work main.cpp people/Human.h
-        Magazine.cpp Magazine.h stdafx.h FootballClub.cpp
-        FootballClub.h functional/News.cpp functional/News.h
-        MyFunctional/Event/Functions.h MyFunctional/Event/MyEvent.h)
+add_executable(course_work main.cpp Human.h
+        Magazine.cpp Magazine.h FootballClub.cpp
+        FootballClub.h News.cpp News.h
+        MyEvent.h)

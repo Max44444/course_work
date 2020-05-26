@@ -1,105 +1,111 @@
-//
-// Created by maxim on 17.04.2020.
-//
-
 #include "Magazine.h"
 
 
-
-Magazine::~Magazine() {
-    for(auto *el : AdminOptions._users){
-        delete el;
-    }
-    AdminOptions._users.clear();
+std::list<const News *> Magazine::get_news() {
+    return _news;
 }
 
-std::list<const News  *> Magazine::get_news(std::size_t quantity) {
-    return AdminOptions._news;
-}
-
-std::vector<const FootballClub *> Magazine::get_clubs_in(cr_str country) {
-    auto it = AdminOptions._football_clubs.find(country);
-    if(it == AdminOptions._football_clubs.end()){
-        return std::vector<const FootballClub *>(0);
+std::vector<std::shared_ptr<FootballClub>> Magazine::get_clubs_in(cr_str country) {
+    auto it = _football_clubs.find(country);
+    if(it == _football_clubs.end()){
+        return std::vector<std::shared_ptr<FootballClub>>(0);
     }
     else{
         return it->second;
     }
 }
 
-
-User *Magazine::registration(cr_str name, cr_str password) {
+std::shared_ptr<User> Magazine::registration(cr_str name, cr_str password) {
     if(authorization(name, password) == nullptr){
-        auto *user = new User(name, password, this);
-        AdminOptions._users.push_back(user);
+        auto user = std::make_shared<User>(name, password, this);
+        _users.push_back(user);
         return user;
     } else{
         return nullptr;
     }
 }
 
-User *Magazine::authorization(cr_str name, cr_str password) const {
-    auto it = std::find_if(AdminOptions._users.cbegin(), AdminOptions._users.cend(),
-            [&name, &password](const User *user){
-                return (user->_name == name && user->_password == password);
-            });
-    return it == AdminOptions._users.cend() ? nullptr : const_cast<User *>(*it);
+std::shared_ptr<User> Magazine::authorization(cr_str name, cr_str password) const {
+    auto it = std::find_if(_users.begin(), _users.end(),
+                           [&name, &password](const std::shared_ptr<User> &user){
+                               return (user->_name == name && user->_password == password);
+                           });
+    return it == _users.cend() ? nullptr : *it;
 }
 
-bool Magazine::subscribe_user_to(const User *user, const std::string &tag) {
-    auto it = AdminOptions._tags.find(tag);
-    if(it != AdminOptions._tags.end()){
-        it->second.push_back(*user, &User::add_news);
+bool Magazine::subscribe_user_to(const User *user, const std::shared_ptr<FootballClub> &club) {
+    auto tag = club->get_name();
+    auto it = _tags.find(tag);
+    if(it != _tags.end()){
+        it->second.push_back(*(user), &User::add_news);
         return true;
     }
     return false;
 }
 
+bool Magazine::subscribe_user_to(const User *user, const FootballClub::Footballer &footballer) {
+    auto tag = footballer.get_club()->get_name() + "_" + footballer.get_name() + "_"
+               + std::to_string(footballer.get_number());
+    auto it = _tags.find(tag);
+    if(it != _tags.end()){
+        it->second.push_back(*(user), &User::add_news);
+        return true;
+    }
+    return false;
+}
 
-bool Magazine::AdditionalOptions::add_news(const News &news, const std::initializer_list<std::string> &tags) {
-    std::list<MyEvent<const News *>> events;
+FootballSeasons Magazine::get_seasons() const {
+    return _seasons_list;
+}
+
+
+bool Magazine::add_news(const News *news, const std::initializer_list<std::string> &tags) {
+    if(auto res = dynamic_cast<const MatchResult *>(news); res != nullptr){
+        auto season = _seasons_list.find_season(res->get_season_name());
+        if(season == nullptr) throw std::invalid_argument("Can not find season");
+        if(season->is_ended()) throw std::invalid_argument("This season was ended");
+        season->add_match(res);
+    }
     for(const auto &el : tags){
         auto it = _tags.find(el);
         if(it == _tags.end()){
             throw std::invalid_argument("tags list is not correct");
-            return false;
         }
-        events.push_back(it->second);
     }
-    for(const auto& el : events){
-        el(&news);
+    _news.push_back(news);
+
+    for(const auto &el : tags){
+        _tags[el](news);
     }
     return true;
 }
 
-bool Magazine::AdditionalOptions::delete_news(const News &news) {
+bool Magazine::delete_news(const News &news) {
     auto it = std::find(_news.cbegin(), _news.cend(), &news);
     if(it == _news.end()){
         return false;
     }
-    delete *it;
     _news.erase(it);
     return true;
 }
 
-bool Magazine::AdditionalOptions::add_club(cr_str country, cr_str name, cr_str ground,
-                                           cr_str league, std::size_t capacity) {
+bool Magazine::add_club(cr_str country, cr_str name, cr_str ground, cr_str league, std::size_t capacity) {
     if(std::find_if(_football_clubs[country].cbegin(), _football_clubs[country].cend(),
-                    [&name](const FootballClub* other){
+                    [&name](const std::shared_ptr<const FootballClub> &other){
                         return name == other->get_name();
                     }) == _football_clubs[country].cend()) {
-        _football_clubs[country].push_back(new FootballClub(name, ground, league, capacity));
+        _football_clubs[country].push_back(std::make_shared<FootballClub>(name, ground, league, capacity));
         _tags.emplace(name, MyEvent<const News *>());
         return true;
     }
     return false;
 }
 
-bool Magazine::AdditionalOptions::erase_club(cr_str country, cr_str club) {
+bool Magazine::erase_club(cr_str country, cr_str club) {
     auto it = std::find_if(_football_clubs[country].cbegin(), _football_clubs[country].cend(),
-                        [&club](const FootballClub *other){
-                            return (club == other->get_name());
-                        });
+                           [&club](const std::shared_ptr<const FootballClub> &other){
+                               return (club == other->get_name());
+                           });
     if(it == _football_clubs[country].end()){
         return false;
     }
@@ -108,9 +114,9 @@ bool Magazine::AdditionalOptions::erase_club(cr_str country, cr_str club) {
     return true;
 }
 
-bool Magazine::AdditionalOptions::add_footballer_in(FootballClub *club,
-        const std::string &name, u_short number,const std::string &position) {
-    if(club->add_footballer(name, number, position)){
+bool Magazine::add_footballer_in(const std::shared_ptr<const FootballClub>& club,
+                                 const std::string &name, u_short number,const std::string &position) {
+    if(const_cast<FootballClub *>(club.get())->add_footballer(name, number, position)){
         std::string tmp = club->get_name() + "_" + name + "_" + std::to_string(number);
         _tags.emplace(tmp, MyEvent<const News *>());
         return true;
@@ -118,13 +124,36 @@ bool Magazine::AdditionalOptions::add_footballer_in(FootballClub *club,
     return false;
 }
 
-bool Magazine::AdditionalOptions::erase_footballer_in(FootballClub *club, cr_str name, u_short number) {
-    if(club->erase_footballer(number)){
+bool Magazine::erase_footballer_in(const std::shared_ptr<const FootballClub>& club, cr_str name, u_short number) {
+    if(const_cast<FootballClub *>(club.get())->erase_footballer(number)){
         std::string tmp = club->get_name() + "_" + name + "_" + std::to_string(number);
         _tags.erase(tmp);
         return true;
     }
     return false;
+}
+
+Magazine::Magazine(const Magazine &) {
+    for(auto *el : _news){
+        delete el;
+    }
+    _news.clear();
+}
+
+bool Magazine::start_season(cr_str name) {
+    return _seasons_list.start_season(name);
+}
+
+bool Magazine::close_season(const FootballSeasons::Season &season) {
+    auto s = _seasons_list.find_season(season.get_name());
+    return s->close_season();
+}
+
+std::vector<std::string> Magazine::get_countries() {
+    std::vector<std::string> res;//(_football_clubs.size());
+    for(const auto &el : _football_clubs)
+        res.push_back(el.first);
+    return res;
 }
 
 
@@ -145,36 +174,14 @@ std::list<const News *> User::get_my_news() const {
     return _my_news;
 }
 
-bool User::subscribe_to(cr_str event) {
-    return _magazine->subscribe_user_to(this, event);
+bool User::subscribe_to(const std::shared_ptr<FootballClub> &club) {
+    return _magazine->subscribe_user_to(this, club);
+}
+
+bool User::subscribe_to(const FootballClub::Footballer &footballer) {
+    return _magazine->subscribe_user_to(this, footballer);
 }
 
 void User::add_news(const News *news) {
     _my_news.push_back(news);
-}
-
-bool Admin::add_news(const News &news, const std::initializer_list<std::string> &tags) {
-    return _magazine->AdminOptions.add_news(news, tags);
-}
-
-bool Admin::delete_news(const News &news) {
-    return _magazine->AdminOptions.delete_news(news);
-}
-
-bool Admin::add_club(const std::string &country, const std::string &name, const std::string &ground,
-                     const std::string &league, std::size_t capacity) {
-    return _magazine->AdminOptions.add_club(country, name, ground, league, capacity);
-}
-
-bool Admin::erase_club(const std::string &country, const std::string &club) {
-    return _magazine->AdminOptions.erase_club(country, club);
-}
-
-bool
-Admin::add_footballer_in(FootballClub *club, const std::string &name, u_short number, const std::string &position) {
-    return _magazine->AdminOptions.add_footballer_in(club, name, number, position);
-}
-
-bool Admin::erase_footballer_in(FootballClub *club, const std::string &name, u_short number) {
-    return _magazine->AdminOptions.erase_footballer_in(club, name, number);
 }

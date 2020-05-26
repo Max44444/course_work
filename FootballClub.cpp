@@ -34,7 +34,7 @@ std::list<FootballClub::Footballer> FootballClub::get_footballers() const {
 
 bool FootballClub::add_footballer(cr_str name, u_short number, cr_str position) {
     if(std::find(_footballers.cbegin(), _footballers.cend(),
-            Footballer(name, this, number, position)) != _footballers.cend())
+                 Footballer(name, this, number, position)) != _footballers.cend())
         return false;
     _footballers.emplace_back(name, this, number, position);
     return true;
@@ -42,9 +42,9 @@ bool FootballClub::add_footballer(cr_str name, u_short number, cr_str position) 
 
 bool FootballClub::erase_footballer(u_short number) {
     auto it = std::find_if(_footballers.cbegin(), _footballers.cend(),
-            [&number](const Footballer &f){
-                return f.get_number() == number;
-            });
+                           [&number](const Footballer &f){
+                               return f.get_number() == number;
+                           });
     if(it == _footballers.cend()) return false;
     _footballers.erase(it);
     return true;
